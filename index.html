@@ -128,8 +128,8 @@ const blueStrip=new T.Mesh(pathGeom,blueMat);blueStrip.rotation.x=-Math.PI/2;blu
 const roadMat=new T.MeshStandardMaterial({color:0x4b535c,roughness:1,side:T.DoubleSide});
 const roadLineMat=new T.MeshBasicMaterial({color:0xf0e9ae,side:T.DoubleSide});
 let turnAmount=0,turnTarget=0,sensorEnabled=false,lastHeading=null,lastHeadingTime=0,lastTurnMotion=0;
-const road=new T.Group();scene.add(road);
-function roadCurve(z){const progress=Math.max(0,Math.min(1,(3-z)/24));return turnAmount*progress*progress*10}
+document.getElementById('turnControl').style.display='none';const road=new T.Group();scene.add(road);
+function roadCurve(z){return 0}
 function buildRoad(){
 while(road.children.length){const m=road.children[0];road.remove(m);m.geometry?.dispose()}
 const verts=[],uv=[],stripeVerts=[];
@@ -140,9 +140,9 @@ const dash=new T.BufferGeometry();dash.setAttribute('position',new T.Float32Buff
 blueStrip.position.y=-.095;blueStrip.visible=false;
 }
 buildRoad();
-document.getElementById('leftTurn').onclick=()=>{turnTarget=-1;sensorEnabled=false};
+document.getElementById('leftTurn').onclick=()=>{turnTarget=0;sensorEnabled=false};
 document.getElementById('straightTurn').onclick=()=>{turnTarget=0;sensorEnabled=false};
-document.getElementById('rightTurn').onclick=()=>{turnTarget=1;sensorEnabled=false};
+document.getElementById('rightTurn').onclick=()=>{turnTarget=0;sensorEnabled=false};
 document.getElementById('sensorTurn').onclick=async()=>{
 if(typeof DeviceOrientationEvent==='undefined'){route.textContent='El Moto no permite leer el giro';return}
 if(typeof DeviceOrientationEvent.requestPermission==='function'){const permission=await DeviceOrientationEvent.requestPermission();if(permission!=='granted')return}
@@ -217,7 +217,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
 
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V22 Moto · Base V17. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
+document.getElementById('note').textContent='V23 Moto · Calle siempre recta. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
 }catch(e){console.error('3D',e)}
 })();
