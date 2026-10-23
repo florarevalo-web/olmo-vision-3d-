@@ -23,7 +23,7 @@ for(let t=1;t<=7;t++){let q=t/8;let y=horizon+(h-horizon)*q*q;line(0,y,w,y,'#fff
 for(const o of objects){let x=w*(.12+.76*o.x),y=h*(.38+.40*o.y),s=Math.max(.35,Math.min(1.45,.35+o.scale*2.2));ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(x,y+5,35*s,8*s,0,0,Math.PI*2);ctx.fill();
 if(o.type==='potted plant')plant(x,y,s,false);else if(o.type==='cat'||o.type==='dog')animal(x,y,s,o.type==='cat');else if(o.type==='person')pedestrian(x,y,s);else if(o.type==='bicycle'||o.type==='motorcycle')bike(x,y,s*.85);else if(['car','truck','bus'].includes(o.type))vehicle(x,y,s,o.type);else{ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#6588a5';ctx.beginPath();ctx.ellipse(0,-22,24,20,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('?',0,-18);ctx.restore()}}
 rearBike(m,h*.94,Math.min(1.65,w/240));requestAnimationFrame(draw)}draw();
-async function detect(){while(enabled){try{estimateSurface();let result=await model.detect(video);objects=result.filter(p=>p.score>.45).slice(0,18).map(p=>({type:p.class,x:(p.bbox[0]+p.bbox[2]/2)/video.videoWidth,y:1-(p.bbox[1]+p.bbox[3])/video.videoHeight,scale:Math.min(1,p.bbox[2]/video.videoWidth),bbox:p.bbox}));status.textContent='IA activa · '+objects.length+' detectados · '+objects.map(o=>o.type).join(', ')}catch(e){enabled=false;status.textContent='Error de detección: '+e.message}await new Promise(r=>setTimeout(r,650))}}
+async function detect(){while(enabled){try{estimateSurface();let result=await model.detect(video);objects=result.filter(p=>p.score>.32).slice(0,18).map(p=>({type:p.class,x:(p.bbox[0]+p.bbox[2]/2)/video.videoWidth,y:1-(p.bbox[1]+p.bbox[3])/video.videoHeight,scale:Math.min(1,p.bbox[2]/video.videoWidth),bbox:p.bbox}));status.textContent='IA activa · '+objects.length+' detectados · '+objects.map(o=>o.type).join(', ')+' · postes y calles sin detección específica'}catch(e){enabled=false;status.textContent='Error de detección: '+e.message}await new Promise(r=>setTimeout(r,650))}}
 button.addEventListener('click',async()=>{if(loading)return;loading=true;button.disabled=true;status.textContent='Solicitando permiso de cámara…';try{if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('Abrí esta página mediante HTTPS en Chrome');const stream=await Promise.race([navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La cámara no respondió en 12 segundos')),12000))]);video.srcObject=stream;await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('No se pudo iniciar el video')),10000))]);status.textContent='Cámara encendida · cargando IA…';if(!window.cocoSsd)throw Error('No se cargó la IA. Revisá la conexión');model=await Promise.race([cocoSsd.load(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La IA tardó demasiado en cargar. Revisá internet o probá con Chrome actualizado.')),25000))]);enabled=true;button.textContent='📷 Cámara activa';status.textContent='IA lista · buscando objetos reales';detect()}catch(e){status.textContent=e.name==='NotAllowedError'?'Permiso denegado: habilitá cámara para este sitio en Chrome':e.message;button.disabled=false;button.textContent='📷 Reintentar cámara'}finally{loading=false}});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/deeplab@0.2.1/dist/deeplab.min.js"></script>
@@ -164,10 +164,10 @@ const guide=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0
 guide.rotation.x=-Math.PI/2;guide.position.y=-.073;guide.renderOrder=5;scene.add(guide);
 let guideOffset=0;
 function refreshGuide(){
-const candidate=objects.filter(o=>o.x>.3&&o.x<.7&&o.scale>.16).sort((a,b)=>b.scale-a.scale)[0];
-const target=candidate?(candidate.x<.5?1.7:-1.7):0;
+const candidate=objects.filter(o=>o.x>.22&&o.x<.78&&o.scale>.09&&['car','truck','bus','motorcycle','bicycle','person','chair','dining table','dog','cat'].includes(o.type)).sort((a,b)=>b.scale-a.scale)[0];
+const target=candidate?(candidate.x<.5?1.85:-1.85):0;
 guideOffset+=(target-guideOffset)*.22;
-const points=[],index=[];for(let i=0;i<=24;i++){let z=3-i,x=guideOffset*Math.min(1,Math.max(0,i/10));points.push(x-.36,0,z,x+.36,0,z)}
+const points=[],index=[];for(let i=0;i<=24;i++){let z=3-i,x=guideOffset*Math.sin(Math.PI*Math.min(1,Math.max(0,i/24)));points.push(x-.36,0,z,x+.36,0,z)}
 for(let i=0;i<24;i++){let j=i*2;index.push(j,j+1,j+2,j+1,j+3,j+2)}
 const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(points,3));g.setIndex(index);g.computeVertexNormals();guide.geometry.dispose();guide.geometry=g;
 }
@@ -245,7 +245,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
 
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V25 Moto · Autos grises, alertas visuales y sonoras y franja azul ilustrativa. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
+document.getElementById('note').textContent='V26 Moto · Autos grises, alertas visuales y sonoras y franja azul ilustrativa. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
 }catch(e){console.error('3D',e)}
 })();
