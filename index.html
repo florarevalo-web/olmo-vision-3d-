@@ -69,7 +69,7 @@ function person3(){let g=new T.Group();box(g,.43,.78,.27,mat(0x377d9b),0,1.2,0);
 
 // Segmentación semántica experimental ADE20K: identifica regiones de imagen,
 // no profundidad, distancias ni tipos específicos de pavimento.
-let segModel=null,segBusy=false,segReady=false,segLabel='no disponible',vegetation=[];
+let segModel=null,segBusy=false,segReady=false,segLabel='no disponible',vegetation=[],plantHistory=[];
 const land=mat(0xaebbc1),grass=mat(0x76a77b),earth=mat(0xafa18a);
 function makeTree(){let g=new T.Group();box(g,.23,2.0,.23,mat(0x6d5541),0,1,0);let crown=new T.Mesh(new T.IcosahedronGeometry(1.15,1),mat(0x4b8a56));crown.position.y=2.65;g.add(crown);return g}
 function makeBush(){let g=new T.Group();for(const [x,z,s] of [[0,0,.7],[-.5,.1,.45],[.45,-.15,.5]]){let o=new T.Mesh(new T.IcosahedronGeometry(s,1),mat(0x5a9659));o.position.set(x,s*.75,z);g.add(o)}return g}
@@ -86,8 +86,23 @@ for(let y=Math.floor(H*.62);y<H;y+=6)for(let x=0;x<W;x+=6){let n=labelAt(x,y);if
 const keys=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
 let chosen=keys.find(k=>/grass|field|earth|dirt|sand|road|sidewalk|floor|pavement|ground|rock|stone/.test(k));
 if(chosen){segLabel=chosen;ground.material=/grass|field/.test(chosen)?grass:/earth|dirt|sand|rock|stone/.test(chosen)?earth:land}else{segLabel='no identificado';ground.material=land}
-for(let y=Math.floor(H*.18);y<Math.floor(H*.7);y+=Math.max(12,Math.floor(H/6)))for(let x=12;x<W-12;x+=Math.max(18,Math.floor(W/7))){let n=labelAt(x,y);if(/tree|plant|grass|flower|shrub/.test(n))locations.push({x:x/W,y:y/H,tree:/tree/.test(n)})}
-vegetation=locations.slice(0,12);
+// Agrupar por regiones: no convertir cada píxel verde en un árbol.
+const cols=6,rows=3;
+for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){
+let tree=0,bush=0,total=0;
+for(let j=0;j<5;j++)for(let i=0;i<5;i++){
+const x=Math.min(W-1,Math.floor((ix+(i+.5)/5)*W/cols));
+const y=Math.min(H-1,Math.floor((.15+(iy+(j+.5)/5)*.57/rows)*H));
+const n=labelAt(x,y);total++;
+if(/tree/.test(n))tree++;else if(/plant|shrub|flower/.test(n))bush++;
+}
+if(tree/total>.48)locations.push({x:(ix+.5)/cols,y:.15+(iy+.5)*.57/rows,tree:true,key:ix+'-'+iy});
+else if(bush/total>.55)locations.push({x:(ix+.5)/cols,y:.15+(iy+.5)*.57/rows,tree:false,key:ix+'-'+iy});
+}
+// Exigir coincidencia en dos análisis consecutivos antes de mostrar vegetación.
+const next=locations.filter(v=>plantHistory.some(p=>p.key===v.key&&p.tree===v.tree));
+plantHistory=locations;
+vegetation=next.slice(0,5);
 }catch(e){console.warn('Error de segmentación',e)}finally{segBusy=false}
 }
 let segLast=0;
@@ -113,7 +128,7 @@ const shown=[];function sync(){for(const o of shown)scene.remove(o);shown.length
 let last=0;function render(t){requestAnimationFrame(render);if(t-last>500){sync();refreshRings();const obstruction=objects.some(o=>o.x>.62&&o.y>.3&&['car','person','truck','bus','motorcycle','bicycle'].includes(o.type));mini.classList.toggle('hidden',!mapWanted||obstruction);last=t}if(t-segLast>3500){segLast=t;if(enabled)segment()}if(t-(window._plantsUpdated||0)>3500){window._plantsUpdated=t;for(const p of plants3)scene.remove(p);plants3.length=0;for(const v of vegetation){let p=v.tree?makeTree():makeBush();p.position.set((v.x-.5)*15,0,-2-v.y*18);p.scale.setScalar(v.tree?.85:.7);scene.add(p);plants3.push(p)}}renderer.render(scene,camera3)}
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V14 · 3D + GPS opcional + franja azul ILUSTRATIVA. No calcula zona segura, distancias ni ruta. Solo probar detenido.';
+document.getElementById('note').textContent='V15 · Vegetación filtrada y estabilizada (experimental). Franja azul ilustrativa; no indica ruta segura. Solo probar detenido.';
 }catch(e){console.error('3D',e)}
 })();
 </script></body></html>
