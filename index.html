@@ -124,11 +124,36 @@ for(const o of shown){let ring=ring3(o.userData.kind==='person'?.65:1.05,0x65c4f
 const mini=document.getElementById('map'),toggle=document.getElementById('mapToggle'),frame=document.getElementById('mapframe'),route=document.getElementById('route');
 let mapWanted=false,gpsOk=false;
 toggle.addEventListener('click',()=>{mapWanted=!mapWanted;if(mapWanted&&!gpsOk){route.textContent='📍 Solicitando ubicación GPS…';navigator.geolocation?.getCurrentPosition(pos=>{gpsOk=true;const lat=pos.coords.latitude,lon=pos.coords.longitude;frame.src='https://www.openstreetmap.org/export/embed.html?bbox='+(lon-.003)+'%2C'+(lat-.003)+'%2C'+(lon+.003)+'%2C'+(lat+.003)+'&layer=mapnik&marker='+lat+'%2C'+lon;route.textContent='📍 GPS activo · sin destino definido';mini.classList.remove('hidden')},()=>{route.textContent='GPS no disponible · activá ubicación';mapWanted=false},{enableHighAccuracy:true,timeout:12000})}else mini.classList.toggle('hidden',!mapWanted)});
-const shown=[];function sync(){for(const o of shown)scene.remove(o);shown.length=0;const placed=[];for(const d of objects.slice(0,18)){let o;if(['car','bus','truck'].includes(d.type))o=car3(d.type);else if(d.type==='person')o=person3();else if(['bicycle','motorcycle'].includes(d.type))o=bike3();else continue;const depth=-3-11*Math.max(0,Math.min(1,d.y));let x=(d.x-.5)*15;const scale=Math.max(.43,Math.min(1.15,.52+d.scale));for(let tries=0;tries<7;tries++){if(!placed.some(p=>Math.abs(p.x-x)<(p.s+scale)*.8&&Math.abs(p.z-depth)<1.6))break;x+=(tries%2?1:-1)*(tries+1)*.38}o.position.set(x,0,depth);o.scale.setScalar(scale);o.userData.kind=d.type;scene.add(o);shown.push(o);placed.push({x,z:depth,s:scale})}}
+
+// Modelos 3D simplificados para las categorías detectadas por COCO-SSD.
+function object3(kind){const g=new T.Group(),wood=mat(0xb78455),fabric=mat(0x9aabb5),dark=mat(0x35424e),light=mat(0xd7dce0),green=mat(0x46956b);
+const leg=(x,z,h=.62)=>box(g,.12,h,.12,wood,x,h/2,z);
+if(['chair','dining table','bench','couch','bed'].includes(kind)){
+const wide=kind==='couch'||kind==='bed'?2.15:kind==='dining table'?1.65:kind==='bench'?1.55:.85;
+if(kind==='dining table'){box(g,wide,.14,.9,wood,0,.83,0);for(const x of [-wide*.42,wide*.42])for(const z of [-.34,.34])leg(x,z,.76)}
+else if(kind==='bed'){box(g,wide,.35,1.25,fabric,0,.55,0);box(g,wide,.5,.17,wood,0,.87,-.57);for(const x of [-.88,.88])for(const z of [-.48,.48])leg(x,z,.4)}
+else{box(g,wide,.23,.75,fabric,0,.72,0);box(g,wide,.85,.2,fabric,0,1.18,-.32);for(const x of [-wide*.43,wide*.43])for(const z of [-.25,.25])leg(x,z,.6);if(kind==='couch')for(const x of [-wide*.48,wide*.48])box(g,.2,.4,.75,fabric,x,.98,0)}
+}else if(['tv','laptop','cell phone','remote'].includes(kind)){
+const w=kind==='tv'?1.55:kind==='laptop'?1:.38,h=kind==='tv'?.95:kind==='laptop'?.62:.75;
+box(g,w,h,.09,dark,0,1.05,0);box(g,w*.91,h*.86,.012,mat(0x347da5),0,1.05,.055);box(g,.12,.45,.12,dark,0,.4,0);box(g,.65,.08,.4,dark,0,.15,0)
+}else if(['bottle','cup','wine glass','vase','potted plant'].includes(kind)){
+const pot=new T.Mesh(new T.CylinderGeometry(.22,.17,.5,12),kind==='potted plant'?wood:light);pot.position.y=.3;g.add(pot);
+if(kind==='potted plant'){box(g,.06,.7,.06,wood,0,.88,0);for(let i=0;i<5;i++){const leaf=new T.Mesh(new T.SphereGeometry(.23,8,6),green);leaf.position.set(Math.cos(i*1.26)*.24,1+Math.sin(i)*.12,Math.sin(i*1.26)*.24);g.add(leaf)}}
+}else if(['dog','cat','horse','cow','sheep','bird'].includes(kind)){
+box(g,.85,.45,.35,fabric,0,.65,0);for(const x of [-.3,.3])for(const z of [-.12,.12])box(g,.12,.48,.12,dark,x,.25,z);const head=new T.Mesh(new T.SphereGeometry(.23,10,8),fabric);head.position.set(.48,.92,0);g.add(head)
+}else if(['backpack','handbag','suitcase','book','clock','refrigerator','microwave','oven','sink','toilet','sports ball','teddy bear','traffic light','stop sign'].includes(kind)){
+const w=kind==='refrigerator'?.9:.6,h=kind==='refrigerator'?1.8:.8;
+box(g,w,h,.45,kind==='traffic light'?dark:fabric,0,h/2,0);
+if(kind==='traffic light')for(let i=0;i<3;i++){const bulb=new T.Mesh(new T.SphereGeometry(.12,12,8),mat([0xf44336,0xffcb3b,0x3bc36a][i]));bulb.position.set(0,.18+i*.23,.25);g.add(bulb)}
+}else{
+const sphere=new T.Mesh(new T.IcosahedronGeometry(.4,1),mat(0x6d95ad));sphere.position.y=.55;g.add(sphere);
+}
+return g}
+const shown=[];function sync(){for(const o of shown)scene.remove(o);shown.length=0;const placed=[];for(const d of objects.slice(0,18)){let o;if(['car','bus','truck'].includes(d.type))o=car3(d.type);else if(d.type==='person')o=person3();else if(['bicycle','motorcycle'].includes(d.type))o=bike3();else o=object3(d.type);const depth=-3-11*Math.max(0,Math.min(1,d.y));let x=(d.x-.5)*15;const scale=Math.max(.43,Math.min(1.15,.52+d.scale));for(let tries=0;tries<7;tries++){if(!placed.some(p=>Math.abs(p.x-x)<(p.s+scale)*.8&&Math.abs(p.z-depth)<1.6))break;x+=(tries%2?1:-1)*(tries+1)*.38}o.position.set(x,0,depth);o.scale.setScalar(scale);o.userData.kind=d.type;scene.add(o);shown.push(o);placed.push({x,z:depth,s:scale})}}
 let last=0;function render(t){requestAnimationFrame(render);if(t-last>500){sync();refreshRings();const obstruction=objects.some(o=>o.x>.62&&o.y>.3&&['car','person','truck','bus','motorcycle','bicycle'].includes(o.type));mini.classList.toggle('hidden',!mapWanted||obstruction);last=t}if(t-segLast>3500){segLast=t;if(enabled)segment()}if(t-(window._plantsUpdated||0)>3500){window._plantsUpdated=t;for(const p of plants3)scene.remove(p);plants3.length=0;for(const v of vegetation){let p=v.tree?makeTree():makeBush();p.position.set((v.x-.5)*15,0,-2-v.y*18);p.scale.setScalar(v.tree?.85:.7);scene.add(p);plants3.push(p)}}renderer.render(scene,camera3)}
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V15 · Vegetación filtrada y estabilizada (experimental). Franja azul ilustrativa; no indica ruta segura. Solo probar detenido.';
+document.getElementById('note').textContent='V16 · Interior y exterior automático: modelos 3D simplificados para objetos reconocidos. Ríos, suelos y objetos pequeños no garantizados. Franja azul ilustrativa. Solo detenido.';
 }catch(e){console.error('3D',e)}
 })();
 </script></body></html>
