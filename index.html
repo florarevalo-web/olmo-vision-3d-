@@ -53,6 +53,14 @@ if(kind==='floor'){g.strokeStyle='#9e9a9280';g.lineWidth=2;for(let i=0;i<=256;i+
 if(kind==='water'){g.strokeStyle='#c2e5e888';for(let i=0;i<15;i++){let x=rand()*256,y=rand()*256;g.beginPath();g.moveTo(x,y);g.lineTo(x+15+rand()*30,y);g.stroke()}}
 const tex=new T.CanvasTexture(canvas);tex.wrapS=tex.wrapT=T.RepeatWrapping;tex.repeat.set(14,14);tex.anisotropy=2;return new T.MeshStandardMaterial({map:tex,roughness:.98})}
 const floors={grass:floorTexture('grass'),earth:floorTexture('earth'),stone:floorTexture('stone'),floor:floorTexture('floor'),road:floorTexture('road'),water:floorTexture('water')};
+// Superficie por sectores independientes, en vez de pintar todo el mundo de un color.
+const surfaceTiles=[],tileHistory=new Map();
+for(let row=0;row<5;row++)for(let col=0;col<7;col++){
+const tile=new T.Mesh(new T.PlaneGeometry(3.5,4.5),floors.floor);
+tile.rotation.x=-Math.PI/2;tile.position.set((col-3)*3.5,-.115,2-row*4.5);
+tile.visible=false;scene.add(tile);surfaceTiles.push({tile,row,col});
+}
+function classifyGround(name){if(/river|lake|water|sea/.test(name))return 'water';if(/grass|field|lawn/.test(name))return 'grass';if(/rock|stone|gravel/.test(name))return 'stone';if(/earth|dirt|sand/.test(name))return 'earth';if(/floor|tile|carpet/.test(name))return 'floor';if(/road|sidewalk|pavement|path/.test(name))return 'road';return null}
 const grid=new T.GridHelper(200,100,0xb3c1c9,0xb3c1c9);grid.position.y=-.13;grid.material.opacity=.16;grid.material.transparent=true;scene.add(grid);
 function box(parent,w,h,d,m,x,y,z){let o=new T.Mesh(new T.BoxGeometry(w,h,d),m);o.position.set(x,y,z);parent.add(o);return o}
 function tube(parent,a,b,r,m){let va=new T.Vector3(...a),vb=new T.Vector3(...b),dir=vb.clone().sub(va);let o=new T.Mesh(new T.CylinderGeometry(r,r,dir.length(),8),m);o.position.copy(va.add(vb).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());parent.add(o)}
@@ -90,10 +98,27 @@ const out=await segModel.segment(video);const legend=out.legend||{},data=out.seg
 if(!data||!out.width||!out.height)return;
 const W=out.width,H=out.height,counts={},locations=[];
 function labelAt(x,y){let idx=(y*W+x)*4,r=data[idx],g=data[idx+1],b=data[idx+2];for(const [name,rgb] of Object.entries(legend)){if(rgb[0]===r&&rgb[1]===g&&rgb[2]===b)return name.toLowerCase()}return ''}
-for(let y=Math.floor(H*.62);y<H;y+=6)for(let x=0;x<W;x+=6){let n=labelAt(x,y);if(n)counts[n]=(counts[n]||0)+1}
-const keys=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
-let chosen=keys.find(k=>/grass|field|earth|dirt|sand|road|sidewalk|floor|pavement|ground|rock|stone|gravel|river|lake|water|tile/.test(k));
-if(chosen){segLabel=chosen;ground.material=/river|lake|water/.test(chosen)?floors.water:/grass|field/.test(chosen)?floors.grass:/rock|stone|gravel/.test(chosen)?floors.stone:/earth|dirt|sand/.test(chosen)?floors.earth:/floor|tile/.test(chosen)?floors.floor:floors.road}else{segLabel='no identificado';ground.material=land}
+// V18: votación de etiquetas por cada zona visible de suelo.
+const tileLabels=[];
+for(let row=0;row<5;row++)for(let col=0;col<7;col++){
+const votes={};let total=0;
+for(let iy=0;iy<4;iy++)for(let ix=0;ix<4;ix++){
+const x=Math.min(W-1,Math.floor((col+(ix+.5)/4)*W/7));
+const y=Math.min(H-1,Math.floor((.48+(row+(iy+.5)/4)*.51/5)*H));
+const label=classifyGround(labelAt(x,y));if(label)votes[label]=(votes[label]||0)+1;total++;
+}
+const ranked=Object.entries(votes).sort((a,b)=>b[1]-a[1]);
+const best=ranked[0];tileLabels.push(best&&best[1]>=9?best[0]:null);
+}
+for(let i=0;i<surfaceTiles.length;i++){
+const kind=tileLabels[i],entry=surfaceTiles[i],prev=tileHistory.get(i)||{kind:null,count:0};
+if(kind&&kind===prev.kind)prev.count++;else{prev.kind=kind;prev.count=kind?1:0}
+tileHistory.set(i,prev);
+if(prev.count>=2){entry.tile.material=floors[kind];entry.tile.visible=true}
+else if(!kind){entry.tile.visible=false}
+}
+segLabel='segmentación por sectores';
+ground.material=land;
 // Agrupar por regiones: no convertir cada píxel verde en un árbol.
 const cols=6,rows=3;
 for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){
@@ -161,7 +186,7 @@ const shown=[];function sync(){for(const o of shown)scene.remove(o);shown.length
 let last=0;function render(t){requestAnimationFrame(render);if(t-last>500){sync();refreshRings();const obstruction=objects.some(o=>o.x>.62&&o.y>.3&&['car','person','truck','bus','motorcycle','bicycle'].includes(o.type));mini.classList.toggle('hidden',!mapWanted||obstruction);last=t}if(t-segLast>3500){segLast=t;if(enabled)segment()}if(t-(window._plantsUpdated||0)>3500){window._plantsUpdated=t;for(const p of plants3)scene.remove(p);plants3.length=0;for(const v of vegetation){let p=v.tree?makeTree():makeBush();p.position.set((v.x-.5)*15,0,-2-v.y*18);p.scale.setScalar(v.tree?.85:.7);scene.add(p);plants3.push(p)}}renderer.render(scene,camera3)}
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V17 · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.';
+document.getElementById('note').textContent='V18 · IA de superficies por sectores: puede mostrar pasto y baldosas a la vez (experimental). Sin ruta ni distancias seguras. Probar detenido.';
 }catch(e){console.error('3D',e)}
 })();
 </script></body></html>
