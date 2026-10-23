@@ -25,4 +25,51 @@ if(o.type==='potted plant')plant(x,y,s,false);else if(o.type==='cat'||o.type==='
 rearBike(m,h*.94,Math.min(1.65,w/240));requestAnimationFrame(draw)}draw();
 async function detect(){while(enabled){try{estimateSurface();let result=await model.detect(video);objects=result.filter(p=>p.score>.5&&true).slice(0,10).map(p=>({type:p.class,x:(p.bbox[0]+p.bbox[2]/2)/video.videoWidth,y:1-(p.bbox[1]+p.bbox[3])/video.videoHeight,scale:Math.min(1,p.bbox[2]/video.videoWidth)}));status.textContent='IA activa · '+objects.length+' detectados · '+objects.map(o=>o.type).join(', ')}catch(e){enabled=false;status.textContent='Error de detección: '+e.message}await new Promise(r=>setTimeout(r,250))}}
 button.addEventListener('click',async()=>{if(loading)return;loading=true;button.disabled=true;status.textContent='Solicitando permiso de cámara…';try{if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('Abrí esta página mediante HTTPS en Chrome');const stream=await Promise.race([navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La cámara no respondió en 12 segundos')),12000))]);video.srcObject=stream;await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('No se pudo iniciar el video')),10000))]);status.textContent='Cámara encendida · cargando IA…';if(!window.cocoSsd)throw Error('No se cargó la IA. Revisá la conexión');model=await Promise.race([cocoSsd.load(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La IA tardó demasiado en cargar. Revisá internet o probá con Chrome actualizado.')),25000))]);enabled=true;button.textContent='📷 Cámara activa';status.textContent='IA lista · buscando objetos reales';detect()}catch(e){status.textContent=e.name==='NotAllowedError'?'Permiso denegado: habilitá cámara para este sitio en Chrome':e.message;button.disabled=false;button.textContent='📷 Reintentar cámara'}finally{loading=false}});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+<script>
+(function(){
+if(!window.THREE){console.warn('Motor 3D no disponible; sigue la vista anterior');return}
+try{
+const T=THREE, scene=new T.Scene();scene.background=new T.Color(0xcbd8df);
+const camera3=new T.PerspectiveCamera(43,innerWidth/innerHeight,.1,180);
+camera3.position.set(0,10,17);camera3.lookAt(0,0,-6);
+const renderer=new T.WebGLRenderer({antialias:false,alpha:false,powerPreference:'low-power'});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.4));renderer.setSize(innerWidth,innerHeight);
+renderer.domElement.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none';
+document.body.appendChild(renderer.domElement);
+document.getElementById('ui').style.zIndex=3;document.getElementById('note').style.zIndex=3;
+scene.add(new T.HemisphereLight(0xffffff,0x75818a,2.0));
+const sun=new T.DirectionalLight(0xffffff,2.2);sun.position.set(-6,15,7);scene.add(sun);
+const mat=(color,metalness=0)=>new T.MeshStandardMaterial({color,metalness,roughness:.62});
+const grey=mat(0x515e69),yellow=mat(0xe9c51e,.25),rubber=mat(0x1d252b),silver=mat(0xb7c3cc,.5),glass=mat(0x39596e,.25);
+const ground=new T.Mesh(new T.PlaneGeometry(200,200),mat(0xaebbc1));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;scene.add(ground);
+const grid=new T.GridHelper(200,100,0xb3c1c9,0xb3c1c9);grid.position.y=-.13;grid.material.opacity=.16;grid.material.transparent=true;scene.add(grid);
+function box(parent,w,h,d,m,x,y,z){let o=new T.Mesh(new T.BoxGeometry(w,h,d),m);o.position.set(x,y,z);parent.add(o);return o}
+function tube(parent,a,b,r,m){let va=new T.Vector3(...a),vb=new T.Vector3(...b),dir=vb.clone().sub(va);let o=new T.Mesh(new T.CylinderGeometry(r,r,dir.length(),8),m);o.position.copy(va.add(vb).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());parent.add(o)}
+function bike3(){let g=new T.Group();
+function wheel(z){let w=new T.Mesh(new T.TorusGeometry(.46,.095,8,24),rubber);w.rotation.y=Math.PI/2;w.position.set(0,.48,z);g.add(w);let hub=new T.Mesh(new T.CylinderGeometry(.10,.10,.23,12),silver);hub.rotation.z=Math.PI/2;hub.position.set(0,.48,z);g.add(hub);for(let k=0;k<8;k++){let a=k*Math.PI/4;tube(g,[0,.48,z],[Math.sin(a)*.37,.48+Math.cos(a)*.37,z],.012,silver)}}
+wheel(.9);wheel(-1.1);
+const rear=[0,.48,.9],front=[0,.48,-1.1],crank=[0,.56,-.12],seat=[0,1.42,.36],head=[0,1.35,-.78];
+[[rear,crank],[crank,seat],[seat,rear],[seat,head],[head,crank],[head,front]].forEach((p,i)=>tube(g,p[0],p[1],.055,i%2?grey:yellow));
+box(g,.42,.09,.27,rubber,0,1.5,.4);
+tube(g,[-.55,1.5,-.83],[.55,1.5,-.83],.055,rubber);
+tube(g,[-.22,.5,-.12],[.22,.5,-.12],.055,silver);
+box(g,.22,.08,.18,rubber,-.28,.45,-.12);box(g,.22,.08,.18,rubber,.28,.55,-.12);
+return g}
+const own=bike3();own.position.set(0,0,4);scene.add(own);
+function car3(type){let g=new T.Group(),truck=type==='truck'||type==='bus';let len=truck?3.7:2.6,width=truck?1.6:1.35;
+box(g,width,.58,len,mat(type==='bus'?0xe6bc40:type==='truck'?0xd4dbe0:0x387cba,.3),0,.56,0);
+box(g,width*.84,.55,len*.55,glass,0,1.06,-.15);
+for(let z of [-len*.32,len*.32])for(let x of [-width*.52,width*.52]){let wheel=new T.Mesh(new T.CylinderGeometry(.29,.29,.16,12),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.28,z);g.add(wheel)}
+for(let x of [-width*.34,width*.34])box(g,.19,.12,.07,mat(0xffe6b2),x,.66,-len/2);
+return g}
+function person3(){let g=new T.Group();box(g,.43,.78,.27,mat(0x377d9b),0,1.2,0);let head=new T.Mesh(new T.SphereGeometry(.23,10,8),mat(0xd5a482));head.position.y=1.83;g.add(head);for(let x of [-.12,.12])box(g,.16,.8,.18,mat(0x34475c),x,.4,0);return g}
+const shown=[];function sync(){for(const o of shown)scene.remove(o);shown.length=0;for(const d of objects.slice(0,10)){let o;if(['car','bus','truck'].includes(d.type))o=car3(d.type);else if(d.type==='person')o=person3();else if(['bicycle','motorcycle'].includes(d.type))o=bike3();else continue;let depth=-3-11*Math.max(0,Math.min(1,d.y));o.position.set((d.x-.5)*12,0,depth);o.scale.setScalar(Math.max(.6,Math.min(1.25,.7+d.scale)));scene.add(o);shown.push(o)}}
+let last=0;function render(t){requestAnimationFrame(render);if(t-last>500){sync();last=t}renderer.render(scene,camera3)}
+requestAnimationFrame(render);
+addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+document.getElementById('note').textContent='Vista 3D experimental: objetos detectados por IA, posiciones y tamaños aproximados. Suelo neutro: NO se detectan caminos, carriles ni distancias. Usar con bici detenida.';
+}catch(e){console.error('3D',e)}
+})();
 </script></body></html>
