@@ -19,7 +19,7 @@ const horizon=h*.33;
 ctx.strokeStyle='#ffffff30';ctx.lineWidth=1;
 for(let i=-8;i<=8;i++){let bottom=m+i*w*.20;line(m+i*7,horizon,bottom,h,'#ffffff25',1)}
 for(let t=1;t<=7;t++){let q=t/8;let y=horizon+(h-horizon)*q*q;line(0,y,w,y,'#ffffff20',1)}
-ctx.fillStyle='#233b4c';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText(surface==='desconocida'?'SUPERFICIE NO IDENTIFICADA':surface.toUpperCase()+' · ESTIMACIÓN EXPERIMENTAL',m,h*.29);ctx.font='11px system-ui';ctx.fillText('SIN LÍNEAS: TODAVÍA NO HAY DETECTOR DE CARRILES',m,h*.31);
+
 for(const o of objects){let x=w*(.12+.76*o.x),y=h*(.38+.40*o.y),s=Math.max(.35,Math.min(1.45,.35+o.scale*2.2));ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(x,y+5,35*s,8*s,0,0,Math.PI*2);ctx.fill();
 if(o.type==='potted plant')plant(x,y,s,false);else if(o.type==='cat'||o.type==='dog')animal(x,y,s,o.type==='cat');else if(o.type==='person')pedestrian(x,y,s);else if(o.type==='bicycle'||o.type==='motorcycle')bike(x,y,s*.85);else if(['car','truck','bus'].includes(o.type))vehicle(x,y,s,o.type);else{ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#6588a5';ctx.beginPath();ctx.ellipse(0,-22,24,20,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('?',0,-18);ctx.restore()}}
 rearBike(m,h*.94,Math.min(1.65,w/240));requestAnimationFrame(draw)}draw();
@@ -45,6 +45,14 @@ const sun=new T.DirectionalLight(0xffffff,2.2);sun.position.set(-6,15,7);scene.a
 const mat=(color,metalness=0)=>new T.MeshStandardMaterial({color,metalness,roughness:.62});
 const grey=mat(0x515e69),yellow=mat(0xe9c51e,.25),rubber=mat(0x1d252b),silver=mat(0xb7c3cc,.5),glass=mat(0x39596e,.25);
 const ground=new T.Mesh(new T.PlaneGeometry(200,200),mat(0xaebbc1));ground.rotation.x=-Math.PI/2;ground.position.y=-.15;scene.add(ground);
+// Texturas visuales aproximadas: nunca constituyen identificación fiable de pavimento.
+function floorTexture(kind){const canvas=document.createElement('canvas');canvas.width=canvas.height=256;const g=canvas.getContext('2d');const base={grass:'#739b65',earth:'#aa9478',stone:'#a7a6a0',floor:'#c9c4b9',road:'#858b8d',water:'#699cae'}[kind]||'#aebbc1';g.fillStyle=base;g.fillRect(0,0,256,256);
+let seed=12345;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+for(let i=0;i<1000;i++){const x=rand()*256,y=rand()*256,s=kind==='stone'?1+rand()*5:1+rand()*3;g.fillStyle=kind==='grass'?(rand()>.5?'#568b51':'#92af73'):kind==='earth'?'#907e67':kind==='stone'?(rand()>.5?'#e2ddd2':'#737b79'):kind==='water'?'#85b8c7':'#c2c2bb';g.globalAlpha=.13+rand()*.35;g.fillRect(x,y,s,s)}g.globalAlpha=1;
+if(kind==='floor'){g.strokeStyle='#9e9a9280';g.lineWidth=2;for(let i=0;i<=256;i+=64){g.beginPath();g.moveTo(i,0);g.lineTo(i,256);g.moveTo(0,i);g.lineTo(256,i);g.stroke()}}
+if(kind==='water'){g.strokeStyle='#c2e5e888';for(let i=0;i<15;i++){let x=rand()*256,y=rand()*256;g.beginPath();g.moveTo(x,y);g.lineTo(x+15+rand()*30,y);g.stroke()}}
+const tex=new T.CanvasTexture(canvas);tex.wrapS=tex.wrapT=T.RepeatWrapping;tex.repeat.set(14,14);tex.anisotropy=2;return new T.MeshStandardMaterial({map:tex,roughness:.98})}
+const floors={grass:floorTexture('grass'),earth:floorTexture('earth'),stone:floorTexture('stone'),floor:floorTexture('floor'),road:floorTexture('road'),water:floorTexture('water')};
 const grid=new T.GridHelper(200,100,0xb3c1c9,0xb3c1c9);grid.position.y=-.13;grid.material.opacity=.16;grid.material.transparent=true;scene.add(grid);
 function box(parent,w,h,d,m,x,y,z){let o=new T.Mesh(new T.BoxGeometry(w,h,d),m);o.position.set(x,y,z);parent.add(o);return o}
 function tube(parent,a,b,r,m){let va=new T.Vector3(...a),vb=new T.Vector3(...b),dir=vb.clone().sub(va);let o=new T.Mesh(new T.CylinderGeometry(r,r,dir.length(),8),m);o.position.copy(va.add(vb).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),dir.normalize());parent.add(o)}
@@ -84,8 +92,8 @@ const W=out.width,H=out.height,counts={},locations=[];
 function labelAt(x,y){let idx=(y*W+x)*4,r=data[idx],g=data[idx+1],b=data[idx+2];for(const [name,rgb] of Object.entries(legend)){if(rgb[0]===r&&rgb[1]===g&&rgb[2]===b)return name.toLowerCase()}return ''}
 for(let y=Math.floor(H*.62);y<H;y+=6)for(let x=0;x<W;x+=6){let n=labelAt(x,y);if(n)counts[n]=(counts[n]||0)+1}
 const keys=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
-let chosen=keys.find(k=>/grass|field|earth|dirt|sand|road|sidewalk|floor|pavement|ground|rock|stone/.test(k));
-if(chosen){segLabel=chosen;ground.material=/grass|field/.test(chosen)?grass:/earth|dirt|sand|rock|stone/.test(chosen)?earth:land}else{segLabel='no identificado';ground.material=land}
+let chosen=keys.find(k=>/grass|field|earth|dirt|sand|road|sidewalk|floor|pavement|ground|rock|stone|gravel|river|lake|water|tile/.test(k));
+if(chosen){segLabel=chosen;ground.material=/river|lake|water/.test(chosen)?floors.water:/grass|field/.test(chosen)?floors.grass:/rock|stone|gravel/.test(chosen)?floors.stone:/earth|dirt|sand/.test(chosen)?floors.earth:/floor|tile/.test(chosen)?floors.floor:floors.road}else{segLabel='no identificado';ground.material=land}
 // Agrupar por regiones: no convertir cada píxel verde en un árbol.
 const cols=6,rows=3;
 for(let iy=0;iy<rows;iy++)for(let ix=0;ix<cols;ix++){
@@ -153,7 +161,7 @@ const shown=[];function sync(){for(const o of shown)scene.remove(o);shown.length
 let last=0;function render(t){requestAnimationFrame(render);if(t-last>500){sync();refreshRings();const obstruction=objects.some(o=>o.x>.62&&o.y>.3&&['car','person','truck','bus','motorcycle','bicycle'].includes(o.type));mini.classList.toggle('hidden',!mapWanted||obstruction);last=t}if(t-segLast>3500){segLast=t;if(enabled)segment()}if(t-(window._plantsUpdated||0)>3500){window._plantsUpdated=t;for(const p of plants3)scene.remove(p);plants3.length=0;for(const v of vegetation){let p=v.tree?makeTree():makeBush();p.position.set((v.x-.5)*15,0,-2-v.y*18);p.scale.setScalar(v.tree?.85:.7);scene.add(p);plants3.push(p)}}renderer.render(scene,camera3)}
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V16 · Interior y exterior automático: modelos 3D simplificados para objetos reconocidos. Ríos, suelos y objetos pequeños no garantizados. Franja azul ilustrativa. Solo detenido.';
+document.getElementById('note').textContent='V17 · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.';
 }catch(e){console.error('3D',e)}
 })();
 </script></body></html>
