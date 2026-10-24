@@ -11,7 +11,7 @@ function vehicle(x,y,s,type){ctx.save();ctx.translate(x,y);ctx.scale(s,s);let tr
 function pedestrian(x,y,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#e8b48e';ctx.beginPath();ctx.arc(0,-75,12,0,7);ctx.fill();line(0,-60,0,-28,'#3588a7',16);line(-5,-52,-19,-31,'#e8b48e',7);line(5,-52,19,-35,'#e8b48e',7);line(-4,-26,-14,0,'#283b56',9);line(4,-26,14,0,'#283b56',9);ctx.restore()}
 function rearBike(x,y,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#0008';ctx.beginPath();ctx.ellipse(0,8,37,12,0,0,7);ctx.fill();ctx.fillStyle='#161c22';ctx.fillRect(-9,-35,18,48);ctx.fillStyle='#a6b3b9';ctx.fillRect(-5,-32,10,42);line(-7,-46,-24,-67,'#efd22d',7);line(7,-46,24,-67,'#efd22d',7);line(-24,-67,24,-67,'#efd22d',6);line(-36,-76,36,-76,'#28343b',7);ctx.fillStyle='#222a30';ctx.beginPath();ctx.ellipse(0,-87,23,9,0,0,7);ctx.fill();ctx.fillStyle='#e5cf32';ctx.fillRect(-5,-19,10,13);ctx.restore()}
 function animal(x,y,s,cat){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(0,4,32,7,0,0,7);ctx.fill();ctx.fillStyle=cat?'#c9cbd0':'#b8946b';ctx.beginPath();ctx.ellipse(0,-23,30,19,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(25,-37,15,0,7);ctx.fill();poly([[15,-47],[18,-63],[27,-50]],cat?'#c9cbd0':'#b8946b');poly([[31,-49],[39,-60],[39,-40]],cat?'#c9cbd0':'#b8946b');for(let q of [-18,12]){ctx.fillRect(q,-13,7,17)}ctx.restore()}function plant(x,y,s,tree=false){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#6a4932';ctx.fillRect(-5,-38,10,38);ctx.fillStyle=tree?'#397f46':'#529b4b';for(const [dx,dy,r] of [[0,-55,25],[-18,-40,18],[18,-42,19]]){ctx.beginPath();ctx.arc(dx,dy,r,0,Math.PI*2);ctx.fill()}ctx.restore()}
-function estimateSurface(){if(!video.videoWidth||!video.videoHeight)return;try{sc.drawImage(video,0,0,80,60);let d=sc.getImageData(0,30,80,25).data,grey=0,green=0,brown=0,n=0;for(let i=0;i<d.length;i+=16){let r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx-mn<24&&r>38&&r<215)grey++;if(g>r*1.17&&g>b*1.07)green++;if(r>g*1.14&&g>b*1.12)brown++;n++}let options=[['asfalto posible',grey/n],['vegetación posible',green/n],['tierra posible',brown/n]].sort((a,b)=>b[1]-a[1]);surface=options[0][1]>.66?options[0][0]:'desconocida';surfaceScore=options[0][1];document.getElementById('terrainStatus').textContent='Terreno (estimación por color): '+surface+' · barro, senderos y rotondas no verificables por cámara'}catch(e){surface='desconocida'}}
+function estimateSurface(){if(!video.videoWidth||!video.videoHeight)return;try{sc.drawImage(video,0,0,80,60);let d=sc.getImageData(0,30,80,25).data,grey=0,green=0,brown=0,n=0;for(let i=0;i<d.length;i+=16){let r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx-mn<24&&r>38&&r<215)grey++;if(g>r*1.17&&g>b*1.07)green++;if(r>g*1.14&&g>b*1.12)brown++;n++}let options=[['asfalto posible',grey/n],['vegetación posible',green/n],['tierra posible',brown/n]].sort((a,b)=>b[1]-a[1]);surface=options[0][1]>.66?options[0][0]:'desconocida';surfaceScore=options[0][1];const nextTerrain=surface==='vegetación posible'?'grass':surface==='tierra posible'?'earth':surface==='asfalto posible'?'road':'unknown';if(nextTerrain!==terrainKind){terrainKind=nextTerrain;buildRoad();ground.material=nextTerrain==='grass'?floors.grass:nextTerrain==='earth'?floors.earth:nextTerrain==='road'?floors.road:land;grid.visible=nextTerrain==='unknown';}document.getElementById('terrainStatus').textContent='Terreno (estimación por color): '+surface+' · barro, senderos y rotondas no verificables por cámara'}catch(e){surface='desconocida'}}
 function draw(){const w=innerWidth,h=innerHeight,m=w/2;
 let bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#dbe5ec');bg.addColorStop(.55,'#bfcdd5');bg.addColorStop(1,'#8d9ea8');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
 const horizon=h*.33;
@@ -128,23 +128,23 @@ const blueStrip=new T.Mesh(pathGeom,blueMat);blueStrip.rotation.x=-Math.PI/2;blu
 const roadMat=new T.MeshStandardMaterial({color:0x4b535c,roughness:1,side:T.DoubleSide});
 const roadLineMat=new T.MeshBasicMaterial({color:0xf0e9ae,side:T.DoubleSide});
 let turnAmount=0,turnTarget=0,sensorEnabled=false,lastHeading=null,lastHeadingTime=0,lastTurnMotion=0;
-document.getElementById('turnControl').style.display='none';const road=new T.Group();scene.add(road);
+document.getElementById('turnControl').style.display='none';const road=new T.Group();scene.add(road);let terrainKind='unknown';
 function roadCurve(z){return 0}
 function buildRoad(){
 while(road.children.length){const m=road.children[0];road.remove(m);m.geometry?.dispose()}
 const verts=[],uv=[],stripeVerts=[];
 for(let i=0;i<=32;i++){const z=3-i*.75,x=roadCurve(z);verts.push(x-3,-.125,z,x+3,-.125,z);uv.push(0,i/3,1,i/3);stripeVerts.push(x-.06,-.115,z,x+.06,-.115,z)}
 const idx=[];for(let i=0;i<32;i++){let k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2)}
-const geom=new T.BufferGeometry();geom.setAttribute('position',new T.Float32BufferAttribute(verts,3));geom.setIndex(idx);geom.computeVertexNormals();road.add(new T.Mesh(geom,roadMat));
-const dash=new T.BufferGeometry();dash.setAttribute('position',new T.Float32BufferAttribute(stripeVerts,3));const dashidx=[];for(let i=0;i<32;i+=3){let k=i*2;dashidx.push(k,k+1,k+2,k+1,k+3,k+2)}dash.setIndex(dashidx);dash.computeVertexNormals();road.add(new T.Mesh(dash,roadLineMat));
+const geom=new T.BufferGeometry();geom.setAttribute('position',new T.Float32BufferAttribute(verts,3));geom.setIndex(idx);geom.computeVertexNormals();road.add(new T.Mesh(geom,terrainKind==='grass'?floors.grass:terrainKind==='earth'?floors.earth:terrainKind==='stone'?floors.stone:roadMat));
+const dash=new T.BufferGeometry();dash.setAttribute('position',new T.Float32BufferAttribute(stripeVerts,3));const dashidx=[];for(let i=0;i<32;i+=3){let k=i*2;dashidx.push(k,k+1,k+2,k+1,k+3,k+2)}dash.setIndex(dashidx);dash.computeVertexNormals();if(terrainKind==='road')road.add(new T.Mesh(dash,roadLineMat));
 blueStrip.position.y=-.085;blueStrip.visible=false;
 // Señalización 3D decorativa: no detectada ni validada por cámara.
 const white=new T.MeshBasicMaterial({color:0xf5f7f8,side:T.DoubleSide});
-for(const side of [-1,1]){
+for(const side of (terrainKind==='road'?[-1,1]:[])){
  const line=new T.Mesh(new T.PlaneGeometry(.10,23),white);
  line.rotation.x=-Math.PI/2;line.position.set(side*2.84,-.105,-8.5);road.add(line);
 }
-for(let z=-21;z<2;z+=3.8){
+for(let z=-21;terrainKind==='road'&&z<2;z+=3.8){
  const dash=new T.Mesh(new T.PlaneGeometry(.095,1.8),white);
  dash.rotation.x=-Math.PI/2;dash.position.set(0,-.101,z);road.add(dash);
 }
@@ -327,7 +327,7 @@ function drawPark(){
  p.fillStyle='#e8e8e8';p.font='12px system-ui';p.textAlign='center';p.fillText('Colores = tamaño aparente · NO distancia',cx,h*.92);
 }
 window.addEventListener('resize',()=>{if(parkPanel.classList.contains('open'))drawPark()});setInterval(()=>{if(parkPanel.classList.contains('open'))drawPark()},1100);
-document.getElementById('note').textContent='V26.6 Moto · Carteles inventados eliminados · Estacionamiento con autos detectados · Vista estacionar ilustrativa · Líneas blancas y carteles ilustrativos · Sin línea azul · Ruido rojo · Autos grises, alertas visuales y sonoras sin franja azul. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
+document.getElementById('note').textContent='V26.7 Moto · Piso según estimación de cámara · Carteles inventados eliminados · Estacionamiento con autos detectados · Vista estacionar ilustrativa · Líneas blancas y carteles ilustrativos · Sin línea azul · Ruido rojo · Autos grises, alertas visuales y sonoras sin franja azul. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
 }catch(e){console.error('3D',e)}
 })();
