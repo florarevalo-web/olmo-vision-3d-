@@ -309,17 +309,22 @@ function drawPark(){
  for(const o of objects.slice(0,12)){
    if(!o.bbox)continue;
    const [bx,by,bw,bh]=o.bbox,x=ox+bx*scale,y=oy+by*scale,ww=bw*scale,hh=bh*scale;
-   p.strokeStyle='#dedede';p.lineWidth=2;p.setLineDash([5,4]);p.strokeRect(x,y,ww,hh);p.setLineDash([]);
+   const size=Math.max(bw/vw,bh/vh),color=size>.48?'#ef5952':size>.25?'#f6a843':'#f4d961';
+   const hx=x+ww/2,hy=y+hh*.82,rad=Math.max(28,Math.min(110,ww*.8+hh*.3));
+   const halo=p.createRadialGradient(hx,hy,2,hx,hy,rad);
+   halo.addColorStop(0,color+'a0');halo.addColorStop(1,color+'00');
+   p.fillStyle=halo;p.beginPath();p.arc(hx,hy,rad,0,Math.PI*2);p.fill();
+   p.strokeStyle=color;p.lineWidth=2;p.setLineDash([5,4]);p.strokeRect(x,y,ww,hh);p.setLineDash([]);
    const label=names[o.type]||o.type.toUpperCase();
-   p.fillStyle='#e7e7e7';p.fillText(label,Math.max(4,x),Math.max(16,y-7));
+   p.fillStyle=color;p.fillText(label,Math.max(4,x),Math.max(16,y-7));
  }
  p.fillStyle='#11151bea';p.fillRect(0,h-54,w,54);
  p.fillStyle='#eee';p.font='bold 13px system-ui';p.textAlign='center';
  p.fillText('ESCANEO GRIS · CÁMARA DELANTERA',w/2,h-34);
- p.font='11px system-ui';p.fillText('Efecto visual tipo LiDAR · NO mide profundidad',w/2,h-15);
+ p.font='11px system-ui';p.fillText('Gris + colores · tamaño aparente, NO distancia',w/2,h-15);
 }
 window.addEventListener('resize',()=>{if(parkPanel.classList.contains('open'))drawPark()});setInterval(()=>{if(parkPanel.classList.contains('open'))drawPark()},250);
-document.getElementById('note').textContent='V26.9 Moto · Escaneo gris estilo LiDAR basado en cámara real · Estacionar con cámara real y recuadros de IA · Piso según estimación de cámara · Carteles inventados eliminados · Estacionamiento con autos detectados · Vista estacionar ilustrativa · Líneas blancas y carteles ilustrativos · Sin línea azul · Ruido rojo · Autos grises, alertas visuales y sonoras sin franja azul. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
+document.getElementById('note').textContent='V27.0 Moto · Halos de color por tamaño aparente · Escaneo gris estilo LiDAR basado en cámara real · Estacionar con cámara real y recuadros de IA · Piso según estimación de cámara · Carteles inventados eliminados · Estacionamiento con autos detectados · Vista estacionar ilustrativa · Líneas blancas y carteles ilustrativos · Sin línea azul · Ruido rojo · Autos grises, alertas visuales y sonoras sin franja azul. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
 }catch(e){console.error('3D',e)}
 })();
