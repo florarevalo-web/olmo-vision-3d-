@@ -23,8 +23,29 @@ for(let t=1;t<=7;t++){let q=t/8;let y=horizon+(h-horizon)*q*q;line(0,y,w,y,'#fff
 for(const o of objects){let x=w*(.12+.76*o.x),y=h*(.38+.40*o.y),s=Math.max(.35,Math.min(1.45,.35+o.scale*2.2));ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(x,y+5,35*s,8*s,0,0,Math.PI*2);ctx.fill();
 if(o.type==='potted plant')plant(x,y,s,false);else if(o.type==='cat'||o.type==='dog')animal(x,y,s,o.type==='cat');else if(o.type==='person')pedestrian(x,y,s);else if(o.type==='bicycle'||o.type==='motorcycle')bike(x,y,s*.85);else if(['car','truck','bus'].includes(o.type))vehicle(x,y,s,o.type);else{ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#6588a5';ctx.beginPath();ctx.ellipse(0,-22,24,20,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('?',0,-18);ctx.restore()}}
 rearBike(m,h*.94,Math.min(1.65,w/240));requestAnimationFrame(draw)}draw();
-async function detect(){while(enabled){try{estimateSurface();let result=await model.detect(video);objects=result.filter(p=>p.score>.32).slice(0,18).map(p=>({type:p.class,x:(p.bbox[0]+p.bbox[2]/2)/video.videoWidth,y:1-(p.bbox[1]+p.bbox[3])/video.videoHeight,scale:Math.min(1,p.bbox[2]/video.videoWidth),bbox:p.bbox}));status.textContent='IA activa · '+objects.length+' detectados · '+objects.map(o=>o.type).join(', ')+' · postes y calles sin detección específica'}catch(e){enabled=false;status.textContent='Error de detección: '+e.message}await new Promise(r=>setTimeout(r,650))}}
-button.addEventListener('click',async()=>{if(loading)return;loading=true;button.disabled=true;status.textContent='Solicitando permiso de cámara…';try{if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('Abrí esta página mediante HTTPS en Chrome');const stream=await Promise.race([navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La cámara no respondió en 12 segundos')),12000))]);video.srcObject=stream;await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('No se pudo iniciar el video')),10000))]);status.textContent='Cámara encendida · cargando IA…';if(!window.cocoSsd)throw Error('No se cargó la IA. Revisá la conexión');model=await Promise.race([cocoSsd.load(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La IA tardó demasiado en cargar. Revisá internet o probá con Chrome actualizado.')),25000))]);enabled=true;button.textContent='📷 Cámara activa';status.textContent='IA lista · buscando objetos reales';detect()}catch(e){status.textContent=e.name==='NotAllowedError'?'Permiso denegado: habilitá cámara para este sitio en Chrome':e.message;button.disabled=false;button.textContent='📷 Reintentar cámara'}finally{loading=false}});
+let previousDetections=[];
+async function detect(){while(enabled){try{
+ if(video.readyState<2){await new Promise(r=>setTimeout(r,300));continue}
+ estimateSurface();
+ // Hasta 30 candidatos y umbral más sensible, con confirmación temporal.
+ const result=await model.detect(video,30,.24);
+ const current=result.filter(p=>p.score>=.24&&p.bbox[2]>8&&p.bbox[3]>8);
+ const stable=current.filter(p=>{
+   if(p.score>=.48)return true;
+   return previousDetections.some(q=>{
+     if(q.class!==p.class)return false;
+     const ax=p.bbox[0]+p.bbox[2]/2,ay=p.bbox[1]+p.bbox[3]/2;
+     const bx=q.bbox[0]+q.bbox[2]/2,by=q.bbox[1]+q.bbox[3]/2;
+     return Math.abs(ax-bx)<Math.max(35,p.bbox[2]*.45)&&Math.abs(ay-by)<Math.max(35,p.bbox[3]*.45);
+   });
+ });
+ previousDetections=current;
+ objects=stable.slice(0,24).map(p=>({type:p.class,x:(p.bbox[0]+p.bbox[2]/2)/video.videoWidth,y:1-(p.bbox[1]+p.bbox[3])/video.videoHeight,scale:Math.min(1,p.bbox[2]/video.videoWidth),bbox:p.bbox,score:p.score}));
+ status.textContent='IA activa · '+objects.length+' objetos';
+ }catch(e){enabled=false;status.textContent='Error de IA: '+e.message}
+ await new Promise(r=>setTimeout(r,450))
+}}
+button.addEventListener('click',async()=>{if(loading)return;loading=true;button.disabled=true;status.textContent='Solicitando permiso de cámara…';try{if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('Abrí esta página mediante HTTPS en Chrome');const stream=await Promise.race([navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La cámara no respondió en 12 segundos')),12000))]);video.srcObject=stream;await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('No se pudo iniciar el video')),10000))]);status.textContent='Cámara encendida · cargando IA…';if(!window.cocoSsd)throw Error('No se cargó la IA. Revisá la conexión');model=await Promise.race([cocoSsd.load({base:'mobilenet_v2'}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La IA tardó demasiado en cargar. Revisá internet o probá con Chrome actualizado.')),25000))]);enabled=true;button.textContent='📷 Cámara activa';status.textContent='IA lista · buscando objetos reales';detect()}catch(e){status.textContent=e.name==='NotAllowedError'?'Permiso denegado: habilitá cámara para este sitio en Chrome':e.message;button.disabled=false;button.textContent='📷 Reintentar cámara'}finally{loading=false}});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/deeplab@0.2.1/dist/deeplab.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
