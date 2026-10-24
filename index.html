@@ -164,11 +164,18 @@ const guide=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshBasicMaterial({color:0
 guide.rotation.x=-Math.PI/2;guide.position.y=-.073;guide.renderOrder=5;scene.add(guide);
 let guideOffset=0;
 function refreshGuide(){
-const candidate=objects.filter(o=>o.x>.22&&o.x<.78&&o.scale>.09&&['car','truck','bus','motorcycle','bicycle','person','chair','dining table','dog','cat'].includes(o.type)).sort((a,b)=>b.scale-a.scale)[0];
-const target=candidate?(candidate.x<.5?1.85:-1.85):0;
-guideOffset+=(target-guideOffset)*.22;
-const points=[],index=[];for(let i=0;i<=24;i++){let z=3-i,x=guideOffset*Math.sin(Math.PI*Math.min(1,Math.max(0,i/24)));points.push(x-.36,0,z,x+.36,0,z)}
-for(let i=0;i<24;i++){let j=i*2;index.push(j,j+1,j+2,j+1,j+3,j+2)}
+// Trayectoria 3D ILUSTRATIVA, no una ruta navegable ni maniobra de evasión.
+const candidate=objects.filter(o=>o.x>.12&&o.x<.88&&['car','truck','bus','motorcycle','bicycle','person','dog','cat'].includes(o.type)).sort((a,b)=>b.scale-a.scale)[0];
+const target=candidate?(candidate.x<.5?1.45:-1.45):0;
+guideOffset+=(target-guideOffset)*.18;
+const points=[],index=[],segments=48;
+for(let i=0;i<=segments;i++){
+ const progress=i/segments,z=3-progress*30;
+ const bend=Math.sin(Math.PI*Math.min(1,progress/.72));
+ const x=guideOffset*bend;
+ points.push(x-.32,-.07,z,x+.32,-.07,z);
+}
+for(let i=0;i<segments;i++){let j=i*2;index.push(j,j+1,j+2,j+1,j+3,j+2)}
 const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(points,3));g.setIndex(index);g.computeVertexNormals();guide.geometry.dispose();guide.geometry=g;
 }
 const circleMat={red:mat(0xf04444),yellow:mat(0xffcb3b),green:mat(0x47cb82)};
@@ -245,7 +252,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
 
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V26 Moto · Autos grises, alertas visuales y sonoras y franja azul ilustrativa. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
+document.getElementById('note').textContent='V26.1 Moto · Línea azul larga y desvío visual experimental · Autos grises, alertas visuales y sonoras y franja azul ilustrativa. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
 }catch(e){console.error('3D',e)}
 })();
