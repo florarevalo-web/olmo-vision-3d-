@@ -23,6 +23,59 @@ for(let t=1;t<=7;t++){let q=t/8;let y=horizon+(h-horizon)*q*q;line(0,y,w,y,'#fff
 for(const o of objects){let x=w*(.12+.76*o.x),y=h*(.38+.40*o.y),s=Math.max(.35,Math.min(1.45,.35+o.scale*2.2));ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(x,y+5,35*s,8*s,0,0,Math.PI*2);ctx.fill();
 if(o.type==='potted plant')plant(x,y,s,false);else if(o.type==='cat'||o.type==='dog')animal(x,y,s,o.type==='cat');else if(o.type==='person')pedestrian(x,y,s);else if(o.type==='bicycle'||o.type==='motorcycle')bike(x,y,s*.85);else if(['car','truck','bus'].includes(o.type))vehicle(x,y,s,o.type);else{ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle='#6588a5';ctx.beginPath();ctx.ellipse(0,-22,24,20,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('?',0,-18);ctx.restore()}}
 rearBike(m,h*.94,Math.min(1.65,w/240));requestAnimationFrame(draw)}draw();
+
+// Capa cartográfica invisible: OpenStreetMap/Overpass, independiente de COCO.
+// No determina prioridad de paso, condiciones actuales ni distancias de seguridad.
+let roadMap={nodes:[],ways:[],at:0,lat:null,lon:null},roadMapBusy=false,roadGpsStarted=false;
+const roadInfo=document.createElement('div');roadInfo.id='roadInfo';
+roadInfo.style.cssText='position:fixed;left:12px;top:96px;z-index:35;background:#122b39e8;color:#fff;padding:7px 10px;border-radius:9px;font:12px system-ui;max-width:58vw;pointer-events:none';
+roadInfo.textContent='🗺️ Mapa: sin GPS';document.body.appendChild(roadInfo);
+const radians=Math.PI/180;
+function metresBetween(a,b,c,d){const dy=(c-a)*111195,dx=(d-b)*111195*Math.cos(a*radians);return Math.hypot(dx,dy)}
+async function loadRoadMap(lat,lon){
+ if(roadMapBusy)return;roadMapBusy=true;
+ try{
+  const query='[out:json][timeout:12];way(around:450,'+lat+','+lon+')[highway][highway!~"footway|path|steps|cycleway|pedestrian|construction|proposed"];(._;>;);out body;';
+  const res=await fetch('https://overpass.kumi.systems/api/interpreter?data='+encodeURIComponent(query),{signal:AbortSignal.timeout(16000)});
+  if(!res.ok)throw Error('Sin mapa');
+  const data=await res.json(),nodes=new Map(),ways=[];
+  for(const el of data.elements||[])if(el.type==='node')nodes.set(el.id,{lat:el.lat,lon:el.lon});
+  for(const el of data.elements||[])if(el.type==='way'&&el.nodes?.length>1)ways.push({nodes:el.nodes,tags:el.tags||{}});
+  roadMap={nodes,ways,at:Date.now(),lat,lon};
+ }catch(e){roadInfo.textContent='🗺️ Mapa no disponible';}
+ finally{roadMapBusy=false}
+}
+function inspectRoadMap(lat,lon,accuracy){
+ if(!roadMap.ways.length){roadInfo.textContent='🗺️ Buscando calles…';return}
+ let best=Infinity,nearest=null,roundabout=false,intersection=false,curved=false;
+ const nodeWays=new Map();
+ for(const way of roadMap.ways){for(const id of new Set(way.nodes))nodeWays.set(id,(nodeWays.get(id)||0)+1)}
+ for(const way of roadMap.ways){
+  for(let i=0;i<way.nodes.length;i++){
+   const id=way.nodes[i],n=roadMap.nodes.get(id);if(!n)continue;
+   const dist=metresBetween(lat,lon,n.lat,n.lon);
+   if(dist<best){best=dist;nearest=way}
+   if(dist<Math.max(accuracy,25)+20){
+    if(way.tags.junction==='roundabout'||way.tags.junction==='circular')roundabout=true;
+    if((nodeWays.get(id)||0)>=2)intersection=true;
+    if(i>0&&i<way.nodes.length-1){
+     const prev=roadMap.nodes.get(way.nodes[i-1]),next=roadMap.nodes.get(way.nodes[i+1]);
+     if(prev&&next){const a=Math.atan2(n.lon-prev.lon,n.lat-prev.lat),b=Math.atan2(next.lon-n.lon,next.lat-n.lat);const diff=Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));if(diff>.35)curved=true}
+    }
+   }
+  }
+ }
+ const label=roundabout?'Rotonda en mapa':intersection?'Cruce en mapa':curved?'Curva en mapa':best<Math.max(accuracy,30)+35?'Calle en mapa':'Sin calle cercana';
+ roadInfo.textContent='🗺️ '+label+(accuracy>40?' · GPS impreciso':'');
+}
+function startRoadGps(){
+ if(roadGpsStarted||!navigator.geolocation)return;roadGpsStarted=true;
+ navigator.geolocation.watchPosition(pos=>{
+  const {latitude:lat,longitude:lon,accuracy}=pos.coords;
+  if(!roadMap.at||Date.now()-roadMap.at>120000||metresBetween(lat,lon,roadMap.lat,roadMap.lon)>220)loadRoadMap(lat,lon);
+  inspectRoadMap(lat,lon,accuracy);
+ },()=>{roadInfo.textContent='🗺️ Activá ubicación para detectar cruces'},{enableHighAccuracy:true,maximumAge:4000,timeout:15000});
+}
 let previousDetections=[];
 async function detect(){while(enabled){try{
  if(video.readyState<2){await new Promise(r=>setTimeout(r,300));continue}
@@ -45,7 +98,7 @@ async function detect(){while(enabled){try{
  }catch(e){enabled=false;status.textContent='Error de IA: '+e.message}
  await new Promise(r=>setTimeout(r,0))
 }}
-button.addEventListener('click',async()=>{if(loading)return;loading=true;button.disabled=true;status.textContent='Solicitando permiso de cámara…';try{if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('Abrí esta página mediante HTTPS en Chrome');const stream=await Promise.race([navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La cámara no respondió en 12 segundos')),12000))]);video.srcObject=stream;await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('No se pudo iniciar el video')),10000))]);status.textContent='Cámara encendida · cargando IA…';if(!window.cocoSsd)throw Error('No se cargó la IA. Revisá la conexión');model=await Promise.race([cocoSsd.load({base:'mobilenet_v2'}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La IA tardó demasiado en cargar. Revisá internet o probá con Chrome actualizado.')),25000))]);enabled=true;button.textContent='📷 Cámara activa';status.textContent='IA lista · buscando objetos reales';detect()}catch(e){status.textContent=e.name==='NotAllowedError'?'Permiso denegado: habilitá cámara para este sitio en Chrome':e.message;button.disabled=false;button.textContent='📷 Reintentar cámara'}finally{loading=false}});
+button.addEventListener('click',async()=>{if(loading)return;loading=true;button.disabled=true;status.textContent='Solicitando permiso de cámara…';try{if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw Error('Abrí esta página mediante HTTPS en Chrome');const stream=await Promise.race([navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La cámara no respondió en 12 segundos')),12000))]);video.srcObject=stream;await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('No se pudo iniciar el video')),10000))]);status.textContent='Cámara encendida · cargando IA…';if(!window.cocoSsd)throw Error('No se cargó la IA. Revisá la conexión');model=await Promise.race([cocoSsd.load({base:'mobilenet_v2'}),new Promise((_,reject)=>setTimeout(()=>reject(new Error('La IA tardó demasiado en cargar. Revisá internet o probá con Chrome actualizado.')),25000))]);enabled=true;startRoadGps();button.textContent='📷 Cámara activa';status.textContent='IA lista · buscando objetos reales';detect()}catch(e){status.textContent=e.name==='NotAllowedError'?'Permiso denegado: habilitá cámara para este sitio en Chrome':e.message;button.disabled=false;button.textContent='📷 Reintentar cámara'}finally{loading=false}});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/deeplab@0.2.1/dist/deeplab.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
