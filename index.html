@@ -138,8 +138,33 @@ const idx=[];for(let i=0;i<32;i++){let k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2)}
 const geom=new T.BufferGeometry();geom.setAttribute('position',new T.Float32BufferAttribute(verts,3));geom.setIndex(idx);geom.computeVertexNormals();road.add(new T.Mesh(geom,roadMat));
 const dash=new T.BufferGeometry();dash.setAttribute('position',new T.Float32BufferAttribute(stripeVerts,3));const dashidx=[];for(let i=0;i<32;i+=3){let k=i*2;dashidx.push(k,k+1,k+2,k+1,k+3,k+2)}dash.setIndex(dashidx);dash.computeVertexNormals();road.add(new T.Mesh(dash,roadLineMat));
 blueStrip.position.y=-.085;blueStrip.visible=false;
+// Señalización 3D decorativa: no detectada ni validada por cámara.
+const white=new T.MeshBasicMaterial({color:0xf5f7f8,side:T.DoubleSide});
+for(const side of [-1,1]){
+ const line=new T.Mesh(new T.PlaneGeometry(.10,23),white);
+ line.rotation.x=-Math.PI/2;line.position.set(side*2.84,-.105,-8.5);road.add(line);
+}
+for(let z=-21;z<2;z+=3.8){
+ const dash=new T.Mesh(new T.PlaneGeometry(.095,1.8),white);
+ dash.rotation.x=-Math.PI/2;dash.position.set(0,-.101,z);road.add(dash);
+}
 }
 buildRoad();
+// Carteles fijos de ejemplo, NO reconocimiento real de señales.
+const signGroup=new T.Group();scene.add(signGroup);
+function signAt(x,z,label,round){
+ const pole=new T.Mesh(new T.CylinderGeometry(.035,.035,2.1,7),new T.MeshStandardMaterial({color:0x87949b}));
+ pole.position.set(x,1.05,z);signGroup.add(pole);
+ const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
+ const ctx=canvas.getContext('2d');ctx.clearRect(0,0,128,128);
+ ctx.fillStyle=round?'#2365c7':'#f8fafc';ctx.strokeStyle=round?'#fff':'#d72f32';ctx.lineWidth=11;
+ if(round){ctx.beginPath();ctx.arc(64,64,53,0,Math.PI*2);ctx.fill();ctx.stroke()}else{ctx.fillRect(10,10,108,108);ctx.strokeRect(10,10,108,108)}
+ ctx.fillStyle=round?'#fff':'#20242b';ctx.font='bold 46px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,64,66);
+ const texture=new T.CanvasTexture(canvas);
+ const plate=new T.Mesh(new T.PlaneGeometry(.88,.88),new T.MeshBasicMaterial({map:texture,transparent:true,side:T.DoubleSide}));
+ plate.position.set(x,2.28,z);signGroup.add(plate);
+}
+signAt(-3.55,-10,'↻',true);signAt(3.55,-18,'!',false);
 document.getElementById('leftTurn').onclick=()=>{turnTarget=0;sensorEnabled=false};
 document.getElementById('straightTurn').onclick=()=>{turnTarget=0;sensorEnabled=false};
 document.getElementById('rightTurn').onclick=()=>{turnTarget=0;sensorEnabled=false};
@@ -252,7 +277,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catc
 
 requestAnimationFrame(render);
 addEventListener('resize',()=>{camera3.aspect=innerWidth/innerHeight;camera3.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-document.getElementById('note').textContent='V26.3 Moto · Sin línea azul · Botón Ruido rojo · Autos grises, alertas visuales y sonoras y franja azul ilustrativa. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
+document.getElementById('note').textContent='V26.4 Moto · Líneas blancas y carteles ilustrativos · Sin línea azul · Ruido rojo · Autos grises, alertas visuales y sonoras y franja azul ilustrativa. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
 }catch(e){console.error('3D',e)}
 })();
