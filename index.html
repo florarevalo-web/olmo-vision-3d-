@@ -1,5 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Olmo Vision 3D</title><style>
-*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0d1724;color:white;font:14px system-ui;overflow:hidden}canvas{width:100%;height:100%;display:block}#ui{position:fixed;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:flex-start}button{border:0;border-radius:12px;background:#e8d342;color:#16202a;font-weight:700;padding:12px;font-size:13px}#status{background:#102537e8;border-radius:10px;padding:10px;font-size:12px;flex:1}#note{position:fixed;bottom:10px;left:12px;right:12px;text-align:center;font-size:11px;color:#d8e4ea;background:#102537c9;padding:7px;border-radius:8px}video{display:none}#map{position:fixed;right:12px;top:80px;width:135px;height:135px;border:2px solid #ffffff99;border-radius:16px;overflow:hidden;background:#233d46;z-index:25;box-shadow:0 4px 20px #0007}#map.hidden{display:none}#map .maphead{position:absolute;top:4px;left:5px;right:5px;background:#102537dd;color:white;font-size:10px;padding:4px;border-radius:6px;z-index:2}#map iframe{width:100%;height:100%;border:0;pointer-events:none}#route{position:fixed;top:67px;left:12px;z-index:25;background:#102537dc;padding:7px 10px;border-radius:8px;font-size:11px;max-width:55vw}#noiseBtn{position:fixed;right:12px;top:197px;z-index:40;background:#ed2828;color:#fff;font-size:15px;padding:12px 16px;border-radius:14px}#noiseBtn.off{background:#831f1f}#mapToggle{position:fixed;right:12px;top:52px;z-index:26;padding:6px;font-size:11px}#nightView{position:fixed;inset:0;z-index:12;width:100%;height:100%;display:none;pointer-events:none}#torchBtn{position:fixed;right:12px;top:148px;z-index:31;padding:8px;background:#f5cf55}#nightBtn{position:fixed;right:12px;top:105px;z-index:30;padding:7px}#destination{position:fixed;top:152px;right:10px;z-index:32;background:#122b39;color:white;padding:12px;border-radius:14px;width:min(300px,90vw);display:none}#destination input{width:100%;padding:10px;border-radius:8px;border:0;margin:8px 0}#destination a{display:block;color:#86cbff;margin-top:10px}#destination button{padding:9px}#turnControl{position:fixed;left:12px;bottom:54px;z-index:30;display:flex;gap:6px}#turnControl button{padding:9px;background:#21465d;color:white}#parkBtn{position:fixed;right:12px;top:252px;z-index:45;background:#e8d342}#parkPanel{position:fixed;inset:0;z-index:100;background:#12161b;display:none;flex-direction:column}#parkPanel.open{display:flex}#parkHeader{display:flex;justify-content:space-between;align-items:center;padding:14px;background:#202a32;font-weight:700}#parkClose{background:#e8d342}#parkCanvas{flex:1;min-height:0;width:100%;height:100%;touch-action:none}#parkCaption{padding:13px 18px;text-align:center;color:#e5e9ed;background:#202a32;font-size:12px}</style></head><body><canvas id="view"></canvas><video id="cam" playsinline muted autoplay></video><canvas id="nightView"></canvas><div id="turnControl"><button id="leftTurn">↶</button><button id="straightTurn">⬆️</button><button id="rightTurn">↷</button><button id="sensorTurn">📱 Giro</button></div><button id="parkBtn" type="button">🅿️ Estacionar</button><div id="parkPanel"><div id="parkHeader"><span>🅿️ Vista de estacionamiento</span><button id="parkClose" type="button">✕ Volver</button></div><canvas id="parkCanvas"></canvas><div id="parkCaption">Vista superior ilustrativa · Cámara real alternable · No mide distancias ni ve detrás</div></div><button id="torchBtn">🔦 Activar linterna</button><button id="nightBtn">🌙 Auto</button><div id="destination"><strong>🗺️ ¿A dónde querés ir?</strong><input id="where" placeholder="Calle y número, ciudad"><button id="goRoute">💙 Ver camino</button><a id="routeLink" target="_blank" rel="noopener" style="display:none">Abrir ruta en el mapa ↗</a><p style="font-size:11px">Necesita internet. Seguí la señalización real, no la pantalla.</p></div><div id="ui"><button id="start">📷 Activar cámara</button><span id="status">Vista 3D · Cámara apagada</span></div><div id="note">Vista experimental. Estimación de asfalto/tierra/vegetación por colores: puede fallar y NO sirve para navegar. Sin detector de carriles ni distancias. Usar solamente con la bici detenida.</div>
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0d1724;color:white;font:14px system-ui;overflow:hidden}canvas{width:100%;height:100%;display:block}#ui{position:fixed;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:flex-start}button{border:0;border-radius:12px;background:#e8d342;color:#16202a;font-weight:700;padding:12px;font-size:13px}#status{background:#102537e8;border-radius:10px;padding:10px;font-size:12px;flex:1}#note{display:none;position:fixed;bottom:10px;left:12px;right:12px;text-align:center;font-size:11px;color:#d8e4ea;background:#102537c9;padding:7px;border-radius:8px}video{display:none}#map{position:fixed;right:12px;top:80px;width:135px;height:135px;border:2px solid #ffffff99;border-radius:16px;overflow:hidden;background:#233d46;z-index:25;box-shadow:0 4px 20px #0007}#map.hidden{display:none}#map .maphead{position:absolute;top:4px;left:5px;right:5px;background:#102537dd;color:white;font-size:10px;padding:4px;border-radius:6px;z-index:2}#map iframe{width:100%;height:100%;border:0;pointer-events:none}#route{display:none;position:fixed;top:67px;left:12px;z-index:25;background:#102537dc;padding:7px 10px;border-radius:8px;font-size:11px;max-width:55vw}#noiseBtn{position:fixed;right:12px;top:197px;z-index:40;background:#ed2828;color:#fff;font-size:15px;padding:12px 16px;border-radius:14px}#noiseBtn.off{background:#831f1f}#mapToggle{position:fixed;right:12px;top:52px;z-index:26;padding:6px;font-size:11px}#nightView{position:fixed;inset:0;z-index:12;width:100%;height:100%;display:none;pointer-events:none}#torchBtn{position:fixed;right:12px;top:148px;z-index:31;padding:8px;background:#f5cf55}#nightBtn{position:fixed;right:12px;top:105px;z-index:30;padding:7px}#destination{position:fixed;top:152px;right:10px;z-index:32;background:#122b39;color:white;padding:12px;border-radius:14px;width:min(300px,90vw);display:none}#destination input{width:100%;padding:10px;border-radius:8px;border:0;margin:8px 0}#destination a{display:block;color:#86cbff;margin-top:10px}#destination button{padding:9px}#turnControl{position:fixed;left:12px;bottom:54px;z-index:30;display:flex;gap:6px}#turnControl button{padding:9px;background:#21465d;color:white}#parkBtn{position:fixed;right:12px;top:252px;z-index:45;background:#e8d342}#parkPanel{position:fixed;inset:0;z-index:100;background:#12161b;display:none;flex-direction:column}#parkPanel.open{display:flex}#parkHeader{display:flex;justify-content:space-between;align-items:center;padding:14px;background:#202a32;font-weight:700}#parkClose{background:#e8d342}#parkCanvas{flex:1;min-height:0;width:100%;height:100%;touch-action:none}#parkCaption{padding:13px 18px;text-align:center;color:#e5e9ed;background:#202a32;font-size:12px}</style></head><body><canvas id="view"></canvas><video id="cam" playsinline muted autoplay></video><canvas id="nightView"></canvas><div id="turnControl"><button id="leftTurn">↶</button><button id="straightTurn">⬆️</button><button id="rightTurn">↷</button><button id="sensorTurn">📱 Giro</button></div><button id="parkBtn" type="button">🅿️ Estacionar</button><div id="parkPanel"><div id="parkHeader"><span>🅿️ Vista de estacionamiento</span><button id="parkClose" type="button">✕ Volver</button></div><canvas id="parkCanvas"></canvas><div id="parkCaption">Vista aproximada · Sin medición de distancias · No usar para conducir</div></div><button id="torchBtn">🔦 Activar linterna</button><button id="nightBtn">🌙 Auto</button><div id="destination"><strong>🗺️ ¿A dónde querés ir?</strong><input id="where" placeholder="Calle y número, ciudad"><button id="goRoute">💙 Ver camino</button><a id="routeLink" target="_blank" rel="noopener" style="display:none">Abrir ruta en el mapa ↗</a><p style="font-size:11px">Necesita internet. Seguí la señalización real, no la pantalla.</p></div><div id="ui"><button id="start">📷 Activar cámara</button><span id="status">Vista 3D · Cámara apagada</span></div><div id="note">Vista experimental. Estimación de asfalto/tierra/vegetación por colores: puede fallar y NO sirve para navegar. Sin detector de carriles ni distancias. Usar solamente con la bici detenida.</div>
 <div id="visualAlert" style="position:fixed;left:12px;bottom:95px;z-index:30;background:#102537dd;padding:8px;border-radius:8px">🟢 Sin medir distancia</div><div id="terrainStatus" style="position:fixed;left:12px;bottom:160px;z-index:32;background:#102537dd;color:#fff;padding:6px 9px;border-radius:8px;font-size:12px;max-width:85vw">Terreno: esperando cámara</div><div id="route">🚲 Vista 3D experimental · sin ruta segura calculada</div><button id="noiseBtn" type="button" aria-pressed="true">🔊 Ruido</button><button id="mapToggle">🗺️ GPS</button><div id="map" class="hidden"><div class="maphead">GPS · ubicación aproximada</div><iframe id="mapframe" title="Mapa GPS"></iframe></div><script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script><script>
 const canvas=document.getElementById('view'),ctx=canvas.getContext('2d'),video=document.getElementById('cam'),status=document.getElementById('status'),button=document.getElementById('start');let objects=[],model=null,enabled=false,loading=false,surface='desconocida',surfaceScore=0;const sample=document.createElement('canvas');sample.width=80;sample.height=60;const sc=sample.getContext('2d',{willReadFrequently:true});
 function resize(){let d=Math.min(devicePixelRatio||1,2);canvas.width=Math.floor(innerWidth*d);canvas.height=Math.floor(innerHeight*d);ctx.setTransform(d,0,0,d,0,0)}addEventListener('resize',resize);resize();
@@ -131,6 +131,7 @@ let turnAmount=0,turnTarget=0,sensorEnabled=false,lastHeading=null,lastHeadingTi
 document.getElementById('turnControl').style.display='none';const road=new T.Group();scene.add(road);let terrainKind='unknown';
 function roadCurve(z){return 0}
 function buildRoad(){
+road.visible=terrainKind==='road';
 while(road.children.length){const m=road.children[0];road.remove(m);m.geometry?.dispose()}
 const verts=[],uv=[],stripeVerts=[];
 for(let i=0;i<=32;i++){const z=3-i*.75,x=roadCurve(z);verts.push(x-3,-.125,z,x+3,-.125,z);uv.push(0,i/3,1,i/3);stripeVerts.push(x-.06,-.115,z,x+.06,-.115,z)}
@@ -283,50 +284,53 @@ document.getElementById('parkBtn').onclick=()=>{parkPanel.classList.add('open');
 document.getElementById('parkClose').onclick=()=>parkPanel.classList.remove('open');
 let parkTopMode=true;
 function drawPark(){
- const rect=parkCanvas.getBoundingClientRect(),dpr=Math.min(1.5,devicePixelRatio||1),w=Math.max(1,rect.width),h=Math.max(1,rect.height);
+ const r=parkCanvas.getBoundingClientRect(),dpr=Math.min(1.5,devicePixelRatio||1),w=Math.max(1,r.width),h=Math.max(1,r.height);
  parkCanvas.width=Math.round(w*dpr);parkCanvas.height=Math.round(h*dpr);
  const p=parkCanvas.getContext('2d');p.setTransform(dpr,0,0,dpr,0,0);
- p.fillStyle='#15191e';p.fillRect(0,0,w,h);
- if(!video.videoWidth||video.readyState<2){p.fillStyle='#eee';p.font='16px system-ui';p.textAlign='center';p.fillText('Activá la cámara primero',w/2,h/2);return}
+ p.fillStyle='#16191d';p.fillRect(0,0,w,h);
+ if(!video.videoWidth||video.readyState<2){p.fillStyle='#fff';p.font='16px system-ui';p.textAlign='center';p.fillText('Activá la cámara',w/2,h/2);return}
  const vw=video.videoWidth,vh=video.videoHeight;
- const names={car:'AUTO',truck:'CAMIÓN',bus:'COLECTIVO',bicycle:'BICICLETA',motorcycle:'MOTO',person:'PERSONA',dog:'PERRO',cat:'GATO'};
+ const names={car:'AUTO',truck:'CAMIÓN',bus:'BUS',bicycle:'BICI',motorcycle:'MOTO',person:'PERSONA',dog:'PERRO',cat:'GATO',chair:'SILLA','dining table':'MESA',pottedplant:'PLANTA',couch:'SOFÁ'};
+ const detections=objects.filter(o=>o.bbox&&o.scale>.025).slice(0,12);
  if(parkTopMode){
-  const cx=w/2,cy=h*.57,u=Math.min(w*.20,h*.13);
-  p.fillStyle='#292d32';p.fillRect(0,h*.12,w,h*.77);
-  p.strokeStyle='#4b535b';p.lineWidth=2;
-  for(let k=0;k<7;k++){let y=h*.16+k*h*.11;p.beginPath();p.moveTo(0,y);p.lineTo(w,y);p.stroke()}
-  // Bicicleta cenital ilustrativa, orientada hacia arriba.
-  p.save();p.translate(cx,cy);p.strokeStyle='#61d6e5';p.lineWidth=5;p.lineCap='round';
-  for(const y of [-u*.82,u*.82]){p.beginPath();p.ellipse(0,y,u*.20,u*.30,0,0,Math.PI*2);p.stroke()}
-  p.beginPath();p.moveTo(0,-u*.7);p.lineTo(-u*.32,0);p.lineTo(u*.26,u*.22);p.lineTo(0,-u*.7);p.moveTo(-u*.32,0);p.lineTo(0,u*.7);p.stroke();
-  p.strokeStyle='#fff';p.lineWidth=6;p.beginPath();p.moveTo(-u*.32,-u*.64);p.lineTo(u*.32,-u*.64);p.stroke();p.restore();
-  p.fillStyle='#fff';p.font='bold 12px system-ui';p.textAlign='center';p.fillText('TU BICI',cx,cy+u*1.38);
-  // Los objetos solo se asignan a sectores izquierda/centro/derecha del campo DELANTERO.
-  // No hay estimación de profundidad ni detección detrás.
-  for(const o of objects.slice(0,10)){
-   const bx=o.bbox?.[0]||0,bw=o.bbox?.[2]||0,bh=o.bbox?.[3]||0;
-   const rel=(bx+bw/2)/vw-.5,x=cx+rel*w*.80;
-   const size=Math.max(bw/vw,bh/vh),y=cy-u*1.9-(1-size)*u*.95;
-   const color=size>.48?'#f04455':size>.25?'#ff9635':'#ffe44e';
-   const halo=p.createRadialGradient(x,y,2,x,y,u*.64);halo.addColorStop(0,color+'a9');halo.addColorStop(1,color+'00');
-   p.fillStyle=halo;p.beginPath();p.arc(x,y,u*.64,0,Math.PI*2);p.fill();
-   p.fillStyle='#abb2b9';p.strokeStyle='#edf0f2';p.lineWidth=2;
-   if(['car','truck','bus'].includes(o.type)){p.fillRect(x-u*.23,y-u*.38,u*.46,u*.76);p.strokeRect(x-u*.23,y-u*.38,u*.46,u*.76);p.fillStyle='#38424d';p.fillRect(x-u*.17,y-u*.20,u*.34,u*.24)}
-   else{p.beginPath();p.arc(x,y,u*.24,0,Math.PI*2);p.fill();p.stroke()}
-   p.fillStyle='#fff';p.font='bold 11px system-ui';p.textAlign='center';p.fillText(names[o.type]||o.type.toUpperCase(),x,y+u*.58);
+  // Vista aérea estilizada: posiciones aproximadas SOLO del campo frontal.
+  const cx=w/2,cy=h*.69,u=Math.min(w*.24,h*.15);
+  p.fillStyle='#292d32';p.fillRect(0,0,w,h);
+  // Contornos del suelo en gris, sin carriles ni mobiliario inventado.
+  p.strokeStyle='#4d5258';p.lineWidth=1;
+  for(let k=0;k<8;k++){let yy=h*.12+k*h*.11;p.beginPath();p.moveTo(0,yy);p.lineTo(w,yy);p.stroke()}
+  // Bicicleta cenital con cuadro y ruedas.
+  p.save();p.translate(cx,cy);p.lineCap='round';p.strokeStyle='#74dbe7';p.lineWidth=5;
+  for(const y of [-u*.72,u*.72]){p.beginPath();p.ellipse(0,y,u*.17,u*.27,0,0,Math.PI*2);p.stroke()}
+  p.beginPath();p.moveTo(0,-u*.62);p.lineTo(-u*.26,-u*.02);p.lineTo(u*.24,u*.15);p.lineTo(0,-u*.62);p.moveTo(-u*.26,-u*.02);p.lineTo(0,u*.60);p.stroke();
+  p.strokeStyle='#f0f0f0';p.lineWidth=6;p.beginPath();p.moveTo(-u*.27,-u*.54);p.lineTo(u*.27,-u*.54);p.stroke();p.restore();
+  // El eje horizontal usa la ubicación en la imagen; profundidad NO calculada.
+  for(const o of detections){
+   const [bx,by,bw,bh]=o.bbox,rel=(bx+bw/2)/vw-.5,x=Math.max(28,Math.min(w-28,cx+rel*w*.80));
+   const apparent=Math.max(bw/vw,bh/vh),y=Math.max(h*.18,cy-u*1.3-(1-apparent)*u*.95);
+   const color=apparent>.48?'#ef5a51':apparent>.25?'#f8a344':'#f4d75d';
+   const halo=p.createRadialGradient(x,y,2,x,y,u*.65);halo.addColorStop(0,color+'9c');halo.addColorStop(1,color+'00');
+   p.fillStyle=halo;p.beginPath();p.arc(x,y,u*.65,0,Math.PI*2);p.fill();
+   p.save();p.translate(x,y);p.fillStyle='#aeb5bd';p.strokeStyle='#eef0f3';p.lineWidth=2;
+   const t=o.type;
+   if(['car','truck','bus'].includes(t)){p.fillRect(-u*.22,-u*.35,u*.44,u*.7);p.strokeRect(-u*.22,-u*.35,u*.44,u*.7);p.fillStyle='#45505a';p.fillRect(-u*.16,-u*.16,u*.32,u*.22)}
+   else if(t==='chair'){p.fillRect(-u*.22,-u*.12,u*.44,u*.40);p.strokeRect(-u*.22,-u*.12,u*.44,u*.40);p.fillRect(-u*.22,-u*.35,u*.44,u*.12)}
+   else if(t==='dining table'){p.fillRect(-u*.35,-u*.22,u*.70,u*.44);p.strokeRect(-u*.35,-u*.22,u*.70,u*.44)}
+   else if(t==='person'){p.beginPath();p.arc(0,-u*.12,u*.16,0,Math.PI*2);p.fill();p.beginPath();p.ellipse(0,u*.21,u*.20,u*.31,0,0,Math.PI*2);p.fill()}
+   else if(t==='bicycle'||t==='motorcycle'){p.strokeStyle='#ddd';p.lineWidth=3;for(const yy of [-u*.22,u*.22]){p.beginPath();p.ellipse(0,yy,u*.12,u*.15,0,0,Math.PI*2);p.stroke()}p.beginPath();p.moveTo(0,-u*.20);p.lineTo(-u*.15,0);p.lineTo(u*.14,u*.08);p.lineTo(0,-u*.20);p.stroke()}
+   else{p.beginPath();p.arc(0,0,u*.24,0,Math.PI*2);p.fill();p.stroke()}
+   p.restore();p.fillStyle='#f8f8f8';p.font='bold 11px system-ui';p.textAlign='center';p.fillText(names[t]||t.toUpperCase(),x,y+u*.53);
   }
-  p.fillStyle='#dce0e5';p.font='bold 12px system-ui';p.textAlign='center';p.fillText('FRENTE · SOLO CAMPO DE CÁMARA',cx,h*.08);
  }else{
-  const scale=Math.min(w/vw,h/vh),dw=vw*scale,dh=vh*scale,ox=(w-dw)/2,oy=(h-dh)/2;
-  p.save();p.filter='grayscale(1) contrast(1.14) brightness(1.15)';p.drawImage(video,ox,oy,dw,dh);p.restore();
-  for(const o of objects.slice(0,12)){if(!o.bbox)continue;const [bx,by,bw,bh]=o.bbox,x=ox+bx*scale,y=oy+by*scale,ww=bw*scale,hh=bh*scale;const color='#ffb23e';p.strokeStyle=color;p.lineWidth=3;p.strokeRect(x,y,ww,hh);p.fillStyle=color;p.font='bold 12px system-ui';p.fillText(names[o.type]||o.type.toUpperCase(),x,Math.max(14,y-5))}
+  const s=Math.min(w/vw,h/vh),dw=vw*s,dh=vh*s,ox=(w-dw)/2,oy=(h-dh)/2;
+  p.save();p.filter='grayscale(1) contrast(1.12) brightness(1.12)';p.drawImage(video,ox,oy,dw,dh);p.restore();
+  for(const o of detections){const [bx,by,bw,bh]=o.bbox,x=ox+bx*s,y=oy+by*s,ww=bw*s,hh=bh*s;p.strokeStyle='#ffc24d';p.lineWidth=3;p.strokeRect(x,y,ww,hh);p.fillStyle='#ffc24d';p.font='bold 12px system-ui';p.fillText(names[o.type]||o.type.toUpperCase(),x,Math.max(15,y-5))}
  }
- p.fillStyle='#10151deb';p.fillRect(0,h-65,w,65);p.fillStyle='#fff';p.textAlign='center';p.font='12px system-ui';
- p.fillText(parkTopMode?'Vista superior ILUSTRATIVA · Sin distancia':'Cámara real · Objetos en posición 2D',w/2,h-43);
- p.fillText('No es LiDAR ni visión 360°',w/2,h-24);
- p.fillStyle='#f3d84b';p.fillRect(w/2-90,h-22,180,21);p.fillStyle='#15191e';p.font='bold 12px system-ui';p.fillText('CAMBIAR VISTA',w/2,h-7);
+ p.fillStyle='#10151deb';p.fillRect(0,h-52,w,52);
+ p.fillStyle='#e9edf1';p.textAlign='center';p.font='11px system-ui';p.fillText(parkTopMode?'VISTA SUPERIOR APROXIMADA · NO LiDAR':'CÁMARA REAL · SIN DISTANCIAS',w/2,h-35);
+ p.fillStyle='#e8d342';p.fillRect(w/2-83,h-29,166,25);p.fillStyle='#111';p.font='bold 12px system-ui';p.fillText('CAMBIAR VISTA',w/2,h-11);
 }
-parkCanvas.addEventListener('click',e=>{const r=parkCanvas.getBoundingClientRect();if(e.clientY-r.top>r.height-90){parkTopMode=!parkTopMode;drawPark()}});
+parkCanvas.addEventListener('click',e=>{const r=parkCanvas.getBoundingClientRect();if(e.clientY-r.top>r.height-60){parkTopMode=!parkTopMode;drawPark()}});
 window.addEventListener('resize',()=>{if(parkPanel.classList.contains('open'))drawPark()});setInterval(()=>{if(parkPanel.classList.contains('open'))drawPark()},250);
 document.getElementById('note').textContent='V27.2 Moto · Vista superior ilustrativa y cámara real alternables · Imagen gris nítida y halos visibles · Halos de color por tamaño aparente · Escaneo gris estilo LiDAR basado en cámara real · Estacionar con cámara real y recuadros de IA · Piso según estimación de cámara · Carteles inventados eliminados · Estacionamiento con autos detectados · Vista estacionar ilustrativa · Líneas blancas y carteles ilustrativos · Sin línea azul · Ruido rojo · Autos grises, alertas visuales y sonoras sin franja azul. NO mide cercanía ni evita obstáculos reales. IA sin conexión tras guardar recursos. Modo noche: cámara real con bordes redondeados, solo si hay luz suficiente. GPS y rutas requieren internet. Probar detenido.';
 /* Original V17:  · Piso representado con textura 3D estimada (puede fallar). Sin indicaciones de superficie en pantalla. Franja azul ilustrativa; no es una ruta segura. Solo detenido.'; */
